@@ -1,3 +1,5 @@
+from unittest.mock import Mock, patch
+
 from fastapi.testclient import TestClient
 
 from src.api import app
@@ -7,6 +9,7 @@ client = TestClient(app)
 
 
 def test_health_check():
+
     response = client.get("/")
 
     assert response.status_code == 200
@@ -17,7 +20,18 @@ def test_health_check():
     assert data["model"] == "FraudGuardModel@champion"
 
 
-def test_predict_valid_transaction():
+@patch("src.api.get_model")
+def test_predict_valid_transaction(mock_get_model):
+
+    # Create fake ML model
+    mock_model = Mock()
+
+    mock_model.predict.return_value = [1]
+    mock_model.predict_proba.return_value = [[0.01, 0.99]]
+
+    # Return fake model instead of real MLflow model
+    mock_get_model.return_value = mock_model
+
     transaction = {
         "amount": 15000,
         "transactions_last_24h": 20,
@@ -35,18 +49,16 @@ def test_predict_valid_transaction():
 
     data = response.json()
 
-    assert "prediction" in data
-    assert "fraud_probability" in data
+    assert data["prediction"] == "fraud"
+    assert data["fraud_probability"] == 0.99
 
-    assert data["prediction"] in [
-        "fraud",
-        "not_fraud",
-    ]
-
-    assert 0 <= data["fraud_probability"] <= 1
+    # Verify fake model was used
+    mock_model.predict.assert_called_once()
+    mock_model.predict_proba.assert_called_once()
 
 
 def test_predict_invalid_transaction():
+
     transaction = {
         "amount": -500,
         "transactions_last_24h": 20,
