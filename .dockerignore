@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+.git/
+.gitignore
+
+mlruns/
+models/
+
+.env
+
+.DS_Store
